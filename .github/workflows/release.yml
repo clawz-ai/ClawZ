@@ -61,7 +61,7 @@ jobs:
       # Build with code signing when Apple secrets are configured,
       # otherwise build unsigned (users need: xattr -cr /Applications/ClawZ.app)
       - name: Build Tauri app (signed)
-        if: secrets.APPLE_CERTIFICATE != ''
+        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,7 +81,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Build Tauri app (unsigned)
-        if: secrets.APPLE_CERTIFICATE == ''
+        if: ${{ secrets.APPLE_CERTIFICATE == '' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
