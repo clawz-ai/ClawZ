@@ -53,35 +53,11 @@ jobs:
           mkdir -p resources/NodeHelper.app/Contents/MacOS
           mkdir -p resources/openclaw
           mkdir -p resources/cli
-        shell: bash
 
       - name: Generate build info
         run: bash scripts/gen-build-info.sh
 
-      # Build with code signing when Apple secrets are configured,
-      # otherwise build unsigned (users need: xattr -cr /Applications/ClawZ.app)
-      - name: Build Tauri app (signed)
-        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "ClawZ v__VERSION__"
-          releaseBody: |
-            See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
-
-      - name: Build Tauri app (unsigned)
-        if: ${{ secrets.APPLE_CERTIFICATE == '' }}
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
