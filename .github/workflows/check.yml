@@ -51,6 +51,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libgtk-3-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
 
+      - name: Create placeholder resource dirs
+        run: |
+          mkdir -p resources/NodeHelper.app/Contents/MacOS
+          mkdir -p resources/openclaw
+          mkdir -p resources/cli
+
       - name: Cargo check
         working-directory: src-tauri
         run: cargo check
