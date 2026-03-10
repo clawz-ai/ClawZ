@@ -51,6 +51,16 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Create placeholder resource dirs
+        run: |
+          mkdir -p resources/NodeHelper.app/Contents/MacOS
+          mkdir -p resources/openclaw
+          mkdir -p resources/cli
+        shell: bash
+
+      - name: Generate build info
+        run: bash scripts/gen-build-info.sh
+
       # macOS: sign with Developer ID if secrets are configured,
       # otherwise build unsigned (users need: xattr -cr /Applications/ClawZ.app)
       - name: Build Tauri app (macOS)

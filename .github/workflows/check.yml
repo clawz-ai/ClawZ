@@ -26,6 +26,9 @@ jobs:
 
       - run: pnpm install
 
+      - name: Generate build info
+        run: bash scripts/gen-build-info.sh
+
       - name: TypeScript check
         run: npx tsc --noEmit
 
