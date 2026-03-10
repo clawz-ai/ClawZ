@@ -19,6 +19,7 @@ use tokio::time::{timeout, Duration};
 /// Rust's Command calls `setpgid(0,0)` before `pre_exec` closures, making
 /// the child a process-group leader — and `setsid()` fails (EPERM) if the
 /// caller is already a PG leader.
+#[allow(unused_mut)]
 pub fn bg_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     let mut cmd = Command::new(program);
     #[cfg(target_os = "macos")]
@@ -40,6 +41,7 @@ pub fn bg_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
 }
 
 /// Synchronous variant for use with `std::process::Command`.
+#[allow(unused_mut)]
 pub fn bg_std_command(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
     let mut cmd = std::process::Command::new(program);
     #[cfg(target_os = "macos")]

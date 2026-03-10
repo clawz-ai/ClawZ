@@ -128,6 +128,7 @@ fn parse_version(s: &str) -> Option<(u32, u32, u32)> {
 
 // --- Pure logic functions (testable without shell) ---
 
+#[allow(dead_code)]
 fn evaluate_macos_version(version: Option<&str>) -> EnvCheckItem {
     let name = "macOS Version".to_string();
     match version {
