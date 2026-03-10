@@ -13,7 +13,7 @@
   <a href="https://github.com/clawz-ai/ClawZ/actions/workflows/check.yml"><img src="https://github.com/clawz-ai/ClawZ/actions/workflows/check.yml/badge.svg" alt="CI" /></a>
   <a href="https://github.com/clawz-ai/ClawZ/releases"><img src="https://img.shields.io/github/v/release/clawz-ai/ClawZ?include_prereleases&label=release" alt="Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/clawz-ai/ClawZ" alt="License" /></a>
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue" alt="Platform" />
+  <img src="https://img.shields.io/badge/platform-macOS-blue" alt="Platform" />
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
 </p>
 
@@ -113,8 +113,8 @@ Full Chinese and English interface. Auto-detects system language.
 </td>
 <td>
 
-**🖥️ Cross-Platform**<br/>
-macOS, Linux, and Windows. Native performance with Tauri and Rust.
+**🖥️ Native macOS App**<br/>
+Built with Tauri and Rust for native performance. Linux and Windows support planned.
 
 </td>
 </tr>
@@ -143,8 +143,6 @@ Grab the latest release for your platform from the [Releases page](https://githu
 |----------|--------|
 | macOS (Apple Silicon) | `.dmg` |
 | macOS (Intel) | `.dmg` |
-| Windows | `.exe` installer |
-| Linux | `.AppImage`, `.deb` |
 
 > **macOS users:** If macOS says the app is "damaged", run: `xattr -cr /Applications/ClawZ.app`
 

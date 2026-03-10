@@ -20,9 +20,6 @@ jobs:
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             rust_target: x86_64-apple-darwin
-          - platform: windows-latest
-            args: ""
-            rust_target: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -88,21 +85,3 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Build Tauri app (Windows)
-        if: matrix.platform == 'windows-latest'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "ClawZ v__VERSION__"
-          releaseBody: |
-            See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-
-            > **macOS users:** If the app shows "damaged", run in Terminal:
-            > ```
-            > xattr -cr /Applications/ClawZ.app
-            > ```
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
