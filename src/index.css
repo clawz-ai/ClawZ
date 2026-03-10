@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+:root,
+[data-theme="light"] {
+  --primary: #2E86C1;
+  --primary-light: #5DADE2;
+  --secondary: #1A5276;
+  --secondary-light: #85C1E9;
+  --success: #27AE60;
+  --warning: #F39C12;
+  --danger: #E74C3C;
+  --bg-main: #FFFFFF;
+  --bg-sidebar: #141D28;
+  --bg-sidebar-hover: #1E2A3A;
+  --bg-card: #FFFFFF;
+  --bg-surface: #F4F6F7;
+  --text-primary: #2C3E50;
+  --text-secondary: #7F8C8D;
+  --text-white: #FFFFFF;
+  --text-sidebar: #95A5A6;
+  --text-sidebar-active: #FFFFFF;
+  --border: #E5E8EB;
+  --border-light: #F0F2F4;
+}
+
+[data-theme="dark"] {
+  --primary: #5DADE2;
+  --primary-light: #85C1E9;
+  --secondary: #85C1E9;
+  --secondary-light: #AED6F1;
+  --success: #2ECC71;
+  --warning: #F5B041;
+  --danger: #EC7063;
+  --bg-main: #1A1A2E;
+  --bg-sidebar: #0F0F1A;
+  --bg-sidebar-hover: #1A1A2E;
+  --bg-card: #1A1A2E;
+  --bg-surface: #16213E;
+  --text-primary: #E8E8E8;
+  --text-secondary: #8899AA;
+  --text-white: #FFFFFF;
+  --text-sidebar: #8899AA;
+  --text-sidebar-active: #FFFFFF;
+  --border: #2A2A4A;
+  --border-light: #222244;
+}
+
+@layer base {
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .font-display {
+    font-family: -apple-system, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+
+  .font-body {
+    font-family: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+
+  .font-mono {
+    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  }
+
+  /* Smooth scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+}
+
+@layer utilities {
+  /* Page transition animation */
+  .page-enter {
+    animation: fadeIn 200ms ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Slide-in from right (for drawers) */
+  .slide-in-right {
+    animation: slideInRight 250ms ease-out;
+  }
+
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  /* Card hover lift */
+  .card-hover {
+    transition: box-shadow 150ms ease, transform 150ms ease;
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+}

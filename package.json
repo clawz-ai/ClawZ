@@ -1,0 +1,55 @@
+{
+  "name": "ClawZ",
+  "version": "0.1.0",
+  "description": "ClawZ - AI Agent visual management desktop app for OpenClaw framework",
+  "scripts": {
+    "dev": "bash scripts/gen-build-info.sh && vite",
+    "build": "bash scripts/gen-build-info.sh && tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": ["ai", "agent", "openclaw", "tauri", "desktop"],
+  "author": "ClawZ Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/clawz-ai/ClawZ.git"
+  },
+  "homepage": "https://github.com/clawz-ai/ClawZ",
+  "packageManager": "pnpm@10.30.3",
+  "dependencies": {
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-http": "^2.5.7",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-store": "^2.4.2",
+    "@tauri-apps/plugin-stronghold": "^2.3.1",
+    "lucide-react": "^0.576.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router": "^7.13.1",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^28.1.0",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

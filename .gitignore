@@ -1,0 +1,33 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
+*.pen
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Auto-generated
+src/lib/buildInfo.ts
+
+# Bundled runtime assets (downloaded by scripts/download-node.sh + bundle-openclaw.sh)
+resources/NodeHelper.app/
+resources/openclaw/
+
+# Environment
+.env
+.env.*
+
+# Build artifacts
+coverage/
+releases/
+src-tauri/binaries/
+
+# Claude
+.claude/
+CLAUDE.md

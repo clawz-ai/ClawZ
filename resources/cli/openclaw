@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# ClawZ CLI wrapper — delegates to the bundled Node.js + openclaw runtime.
+#
+# This script is designed to be invoked via a symlink from ~/.local/bin/openclaw.
+# It resolves its real path (following symlinks) to locate the app bundle's
+# resources directory, then executes the bundled node + openclaw.mjs.
+set -euo pipefail
+
+# Resolve real path of this script (follow symlinks)
+resolve_path() {
+  local target="$1"
+  while [ -L "$target" ]; do
+    local dir
+    dir="$(cd -P "$(dirname "$target")" && pwd)"
+    target="$(readlink "$target")"
+    # Handle relative symlink
+    [[ "$target" != /* ]] && target="$dir/$target"
+  done
+  echo "$(cd -P "$(dirname "$target")" && pwd)/$(basename "$target")"
+}
+
+SCRIPT_REAL="$(resolve_path "$0")"
+CLI_DIR="$(dirname "$SCRIPT_REAL")"
+# cli/ sits alongside NodeHelper.app/ and openclaw/ inside the resources dir
+RESOURCES_DIR="$(dirname "$CLI_DIR")"
+
+NODE="$RESOURCES_DIR/NodeHelper.app/Contents/MacOS/node"
+OPENCLAW="$RESOURCES_DIR/openclaw/node_modules/openclaw/openclaw.mjs"
+
+if [ ! -x "$NODE" ]; then
+  echo "Error: Node.js binary not found at $NODE" >&2
+  echo "Is ClawZ.app installed?" >&2
+  exit 1
+fi
+
+if [ ! -f "$OPENCLAW" ]; then
+  echo "Error: openclaw.mjs not found at $OPENCLAW" >&2
+  echo "Is ClawZ.app installed?" >&2
+  exit 1
+fi
+
+exec "$NODE" "$OPENCLAW" "$@"

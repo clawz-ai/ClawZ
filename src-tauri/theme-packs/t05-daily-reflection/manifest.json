@@ -1,0 +1,36 @@
+{
+  "id": "t05-daily-reflection",
+  "name": "每日三省",
+  "emoji": "\ud83e\uddd8",
+  "version": "1.0.0",
+  "description": "每日定时提醒反思，记录成长轨迹与目标复盘",
+  "category": "个人效率",
+  "tags": ["个人效率", "反思", "日记"],
+  "author": "ClawZ Team",
+  "skills": [
+    "journal-template",
+    "emotion-tracker",
+    "goal-review"
+  ],
+  "heartbeat": "0 21 * * *",
+  "recommended_model": "deepseek-chat",
+  "estimated_monthly_cost": {
+    "min": 5,
+    "max": 15,
+    "currency": "CNY"
+  },
+  "preview_dialog": [
+    {
+      "role": "assistant",
+      "content": "\ud83c\udf19 晚上好！是时候做今日复盘了：\n\n**三个问题：**\n1. \ud83c\udfaf 今天最有成就感的事情是什么？\n2. \ud83d\udca1 学到了什么新东西？\n3. \ud83d\udd04 如果重来一遍，会怎么做？\n\n请慢慢想，有什么就说什么 \u2728"
+    },
+    {
+      "role": "user",
+      "content": "今天完成了项目的核心模块开发，学到了 Tauri 的插件系统"
+    },
+    {
+      "role": "assistant",
+      "content": "\ud83c\udf1f 太棒了！完成核心模块是个重要里程碑！\n\n\ud83d\udcdd 已记录到你的成长日志。\n\n**本周进度：**\n- 目标完成度：72%\n- 连续打卡：5 天 \ud83d\udd25\n\n明天继续加油！\ud83d\udcaa"
+    }
+  ]
+}

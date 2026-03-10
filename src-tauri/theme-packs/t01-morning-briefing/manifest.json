@@ -1,0 +1,33 @@
+{
+  "id": "t01-morning-briefing",
+  "name": "晨报助手",
+  "emoji": "\ud83c\udf05",
+  "version": "1.0.0",
+  "description": "每天早上推送定制化信息简报，汇总 RSS、新闻和社交媒体的最新动态",
+  "category": "内容创作",
+  "tags": ["定时任务", "RSS", "信息汇总"],
+  "author": "ClawZ Team",
+  "skills": [
+    "web-search",
+    "rss-reader",
+    "text-summarizer",
+    "scheduled-message"
+  ],
+  "cron": "0 8 * * *",
+  "recommended_model": "deepseek-chat",
+  "estimated_monthly_cost": {
+    "min": 10,
+    "max": 20,
+    "currency": "CNY"
+  },
+  "preview_dialog": [
+    {
+      "role": "system",
+      "content": "你是一个新闻简报助手，每天早上 8 点从指定的 RSS 源和新闻网站抓取最新内容，生成一份简洁的中文晨报。"
+    },
+    {
+      "role": "assistant",
+      "content": "\ud83c\udf05 早安！这是你的今日晨报：\n\n**科技要闻**\n1. Apple 发布新款 MacBook Pro...\n2. OpenAI 推出 GPT-5...\n\n**行业动态**\n1. 国内 AI 创业融资创新高...\n\n**今日天气**\n北京：晴 22\u00b0C"
+    }
+  ]
+}

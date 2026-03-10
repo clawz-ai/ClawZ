@@ -1,0 +1,32 @@
+{
+  "id": "t03-duty-customer-service",
+  "name": "值班客服",
+  "emoji": "\ud83e\udd16",
+  "version": "1.0.0",
+  "description": "7\u00d724 小时智能客服，自动回复常见问题并生成工单",
+  "category": "团队运营",
+  "tags": ["客服", "多轮对话", "工单"],
+  "author": "ClawZ Team",
+  "skills": [
+    "faq-knowledge",
+    "multi-turn-dialog",
+    "ticket-generator"
+  ],
+  "heartbeat": "*/30 * * * *",
+  "recommended_model": "deepseek-chat",
+  "estimated_monthly_cost": {
+    "min": 15,
+    "max": 30,
+    "currency": "CNY"
+  },
+  "preview_dialog": [
+    {
+      "role": "user",
+      "content": "你们的产品支持退款吗？"
+    },
+    {
+      "role": "assistant",
+      "content": "您好！关于退款政策：\n\n\u2705 购买后 7 天内可申请无理由退款\n\u2705 商品质量问题随时可退\n\n需要我帮您发起退款申请吗？或者您有其他问题也可以随时问我 \ud83d\ude0a"
+    }
+  ]
+}
