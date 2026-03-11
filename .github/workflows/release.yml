@@ -117,7 +117,7 @@ jobs:
       - name: Notarize and re-upload DMG
         if: runner.os == 'macOS' && env.APPLE_ID != ''
         continue-on-error: true
-        timeout-minutes: 120
+        timeout-minutes: 360
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -146,7 +146,7 @@ jobs:
             --apple-id "$APPLE_ID" \
             --password "$APPLE_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --timeout 110m; then
+            --timeout 350m; then
             echo "Notarization succeeded, stapling ticket..."
             xcrun stapler staple "$DMG_PATH"
 
