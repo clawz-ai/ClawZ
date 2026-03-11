@@ -24,7 +24,12 @@ CLI_DIR="$(dirname "$SCRIPT_REAL")"
 # cli/ sits alongside NodeHelper.app/ and openclaw/ inside the resources dir
 RESOURCES_DIR="$(dirname "$CLI_DIR")"
 
-NODE="$RESOURCES_DIR/NodeHelper.app/Contents/MacOS/node"
+# Node binary location differs by platform (macOS uses NodeHelper.app for Dock suppression)
+if [ "$(uname -s)" = "Darwin" ]; then
+  NODE="$RESOURCES_DIR/NodeHelper.app/Contents/MacOS/node"
+else
+  NODE="$RESOURCES_DIR/node/bin/node"
+fi
 OPENCLAW="$RESOURCES_DIR/openclaw/node_modules/openclaw/openclaw.mjs"
 
 if [ ! -x "$NODE" ]; then

@@ -17,9 +17,6 @@ set -euo pipefail
 NODE_VERSION="${1:-22.22.0}"
 TARGET_TRIPLE="${2:-}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HELPER_APP="$ROOT/resources/NodeHelper.app"
-HELPER_MACOS="$HELPER_APP/Contents/MacOS"
-DEST="$HELPER_MACOS/node"
 
 # Detect platform / architecture (with optional override)
 OS="$(uname -s)"
@@ -65,13 +62,28 @@ case "$OS" in
   *) echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
+# Platform-specific destination path:
+#   macOS  → NodeHelper.app/Contents/MacOS/node  (LSUIElement suppresses Dock icons)
+#   Linux  → node/bin/node                        (plain binary; no .app wrapper needed)
+if [ "$OS" = "Linux" ]; then
+  DEST="$ROOT/resources/node/bin/node"
+  mkdir -p "$ROOT/resources/node/bin"
+  # Create an empty macOS placeholder so tauri.conf.json resources don't error
+  mkdir -p "$ROOT/resources/NodeHelper.app/Contents/MacOS"
+else
+  HELPER_APP="$ROOT/resources/NodeHelper.app"
+  HELPER_MACOS="$HELPER_APP/Contents/MacOS"
+  DEST="$HELPER_MACOS/node"
+  mkdir -p "$HELPER_MACOS"
+  # Create an empty Linux placeholder so tauri.conf.json resources don't error
+  mkdir -p "$ROOT/resources/node/bin"
+fi
+
 # Skip cache check when cross-compiling (existing binary may be wrong arch)
 if [ -f "$DEST" ] && [ -z "$TARGET_TRIPLE" ]; then
   echo "✓ Node.js binary already present: $DEST"
   exit 0
 fi
-
-mkdir -p "$HELPER_MACOS"
 
 DOWNLOAD_URL="https://nodejs.org/dist/v${NODE_VERSION}/${NODE_ARCHIVE}"
 TMPDIR="$(mktemp -d)"
@@ -90,7 +102,8 @@ fi
 cp "$TMPDIR/$NODE_BIN_PATH" "$DEST"
 chmod +x "$DEST"
 
-# Create Info.plist for the helper app (macOS icon suppression)
+# Create Info.plist for the helper app (macOS icon suppression — macOS only)
+if [ "$OS" != "Linux" ]; then
 cat > "$HELPER_APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -112,6 +125,7 @@ cat > "$HELPER_APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
+echo "✓ NodeHelper.app created: $HELPER_APP"
+fi
 
 echo "✓ Node.js binary saved: $DEST"
-echo "✓ NodeHelper.app created: $HELPER_APP"
