@@ -48,11 +48,11 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Create placeholder resource dirs
-        run: |
-          mkdir -p resources/NodeHelper.app/Contents/MacOS
-          mkdir -p resources/openclaw
-          mkdir -p resources/cli
+      - name: Bundle Node.js runtime
+        run: bash scripts/download-node.sh 22.22.0 ${{ matrix.rust_target }}
+
+      - name: Bundle openclaw
+        run: bash scripts/bundle-openclaw.sh
 
       - name: Generate build info
         run: bash scripts/gen-build-info.sh

@@ -8,19 +8,32 @@
 #
 # Output: resources/NodeHelper.app/Contents/{Info.plist, MacOS/node}
 #
-# Usage: bash scripts/download-node.sh [NODE_VERSION]
-# Default version: 22.14.0 (LTS)
+# Usage: bash scripts/download-node.sh [NODE_VERSION] [TARGET_TRIPLE]
+# Default version: 22.22.0 (LTS)
+# TARGET_TRIPLE: optional Rust target triple (e.g., "aarch64-apple-darwin")
+#                to override auto-detected host architecture (useful for cross-compilation)
 set -euo pipefail
 
 NODE_VERSION="${1:-22.22.0}"
+TARGET_TRIPLE="${2:-}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HELPER_APP="$ROOT/resources/NodeHelper.app"
 HELPER_MACOS="$HELPER_APP/Contents/MacOS"
 DEST="$HELPER_MACOS/node"
 
-# Detect platform / architecture
+# Detect platform / architecture (with optional override)
 OS="$(uname -s)"
-ARCH="$(uname -m)"
+if [ -n "$TARGET_TRIPLE" ]; then
+  case "$TARGET_TRIPLE" in
+    aarch64-apple-darwin) OS="Darwin"; ARCH="arm64" ;;
+    x86_64-apple-darwin)  OS="Darwin"; ARCH="x86_64" ;;
+    x86_64-unknown-linux-gnu) OS="Linux"; ARCH="x86_64" ;;
+    aarch64-unknown-linux-gnu) OS="Linux"; ARCH="aarch64" ;;
+    *) echo "Unknown target triple: $TARGET_TRIPLE"; exit 1 ;;
+  esac
+else
+  ARCH="$(uname -m)"
+fi
 
 case "$OS" in
   Darwin)
@@ -52,7 +65,8 @@ case "$OS" in
   *) echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
-if [ -f "$DEST" ]; then
+# Skip cache check when cross-compiling (existing binary may be wrong arch)
+if [ -f "$DEST" ] && [ -z "$TARGET_TRIPLE" ]; then
   echo "✓ Node.js binary already present: $DEST"
   exit 0
 fi
