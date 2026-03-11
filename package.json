@@ -1,6 +1,6 @@
 {
   "name": "ClawZ",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ClawZ - AI Agent visual management desktop app for OpenClaw framework",
   "scripts": {
     "dev": "bash scripts/gen-build-info.sh && vite",

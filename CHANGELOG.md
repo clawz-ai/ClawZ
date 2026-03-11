@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.1.2] - 2026-03-11
+
+### Fixed
+
+- Re-upload stapled DMG to release after successful notarization
+- Increased notarization timeout to 2 hours for slow Apple service
+- Use async submit + poll pattern for better notarization reliability
+
+## [0.1.1] - 2026-03-11
+
+### Fixed
+
+- Separated Apple notarization from build step with timeout control and retry
+- Added `continue-on-error` for notarization to prevent build failure on Apple service delays
+- Updated OpenClaw links from openclaw.io to openclaw.ai
+
 ## [0.1.0] - 2026-03-10
 
 ### Added

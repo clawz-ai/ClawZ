@@ -114,11 +114,12 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Notarize app
+      - name: Notarize and re-upload DMG
         if: runner.os == 'macOS' && env.APPLE_ID != ''
         continue-on-error: true
-        timeout-minutes: 60
+        timeout-minutes: 120
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -128,24 +129,37 @@ jobs:
             echo "No DMG found, skipping notarization"
             exit 0
           fi
+          DMG_NAME=$(basename "$DMG_PATH")
           echo "Notarizing: $DMG_PATH"
 
-          # Retry up to 3 times (Apple deduplicates identical binaries)
-          for attempt in 1 2 3; do
-            echo "Attempt $attempt..."
-            if xcrun notarytool submit "$DMG_PATH" \
+          # Submit for notarization (async)
+          SUBMIT_OUTPUT=$(xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json)
+          SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          echo "Submission ID: $SUBMISSION_ID"
+
+          # Poll for result with 110min timeout (leaves margin within 120min step timeout)
+          if xcrun notarytool wait "$SUBMISSION_ID" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --timeout 110m; then
+            echo "Notarization succeeded, stapling ticket..."
+            xcrun stapler staple "$DMG_PATH"
+
+            # Replace the un-notarized DMG in the release with the stapled one
+            TAG_NAME=$(echo "$GITHUB_REF" | sed 's|refs/tags/||')
+            echo "Re-uploading stapled DMG to release $TAG_NAME..."
+            gh release upload "$TAG_NAME" "$DMG_PATH" --clobber
+            echo "Done! Stapled DMG uploaded to release."
+          else
+            echo "::warning::Notarization did not complete in time. Release will have signed but un-notarized DMG."
+            # Log notarization details for debugging
+            xcrun notarytool info "$SUBMISSION_ID" \
               --apple-id "$APPLE_ID" \
               --password "$APPLE_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
-              --wait; then
-              echo "Notarization succeeded"
-              xcrun stapler staple "$DMG_PATH"
-              break
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "Notarization failed, retrying in 30s..."
-              sleep 30
-            else
-              echo "::warning::Notarization failed after 3 attempts. Release will proceed with signed but un-notarized DMG."
-            fi
-          done
+              --team-id "$APPLE_TEAM_ID" || true
+          fi
