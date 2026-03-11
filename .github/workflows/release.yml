@@ -96,16 +96,15 @@ jobs:
               "$bin"
           done
 
-      - name: Build Tauri app
+      - name: Build Tauri app (sign only, no notarization)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # APPLE_ID/PASSWORD/TEAM_ID intentionally omitted to skip notarization
+          # Notarization is handled separately below with timeout control
         with:
           tagName: v__VERSION__
           releaseName: "ClawZ v__VERSION__"
@@ -114,3 +113,38 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Notarize app
+        if: runner.os == 'macOS' && env.APPLE_ID != ''
+        timeout-minutes: 30
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          DMG_PATH=$(find src-tauri/target -name "*.dmg" -type f | head -1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "No DMG found, skipping notarization"
+            exit 0
+          fi
+          echo "Notarizing: $DMG_PATH"
+
+          # Retry up to 3 times (Apple deduplicates identical binaries)
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt..."
+            if xcrun notarytool submit "$DMG_PATH" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait; then
+              echo "Notarization succeeded"
+              xcrun stapler staple "$DMG_PATH"
+              break
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Notarization failed, retrying in 30s..."
+              sleep 30
+            else
+              echo "::warning::Notarization failed after 3 attempts. Release will proceed with signed but un-notarized DMG."
+            fi
+          done
