@@ -220,4 +220,4 @@ pnpm tauri dev
 
 ## 致谢
 
-ClawZ 基于 [OpenClaw](https://openclaw.io) AI Agent 框架构建，由 [Tauri](https://tauri.app/) 驱动。
+ClawZ 基于 [OpenClaw](https://openclaw.ai) AI Agent 框架构建，由 [Tauri](https://tauri.app/) 驱动。

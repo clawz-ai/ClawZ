@@ -220,4 +220,4 @@ We welcome contributions of all kinds — bug reports, feature requests, documen
 
 ## Acknowledgments
 
-ClawZ is built on top of the [OpenClaw](https://openclaw.io) AI agent framework and powered by [Tauri](https://tauri.app/).
+ClawZ is built on top of the [OpenClaw](https://openclaw.ai) AI agent framework and powered by [Tauri](https://tauri.app/).
