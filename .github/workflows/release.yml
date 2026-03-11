@@ -79,6 +79,23 @@ jobs:
             -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
+      - name: Sign bundled native binaries
+        if: runner.os == 'macOS' && env.APPLE_SIGNING_IDENTITY != ''
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          # Sign all native binaries in resources/ so Apple notarization passes
+          find resources -type f \( \
+            -name "node" -o -name "*.node" -o -name "*.dylib" \
+            -o -name "spawn-helper" \
+          \) | while read -r bin; do
+            echo "Signing: $bin"
+            codesign --force --options runtime --timestamp \
+              --sign "$APPLE_SIGNING_IDENTITY" \
+              --entitlements src-tauri/entitlements.plist \
+              "$bin"
+          done
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
