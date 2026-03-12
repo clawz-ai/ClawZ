@@ -116,6 +116,8 @@ jobs:
           # Notarization is handled separately below with timeout control
           # Required for linuxdeploy AppImage to run without FUSE in GitHub Actions sandbox
           APPIMAGE_EXTRACT_AND_RUN: 1
+          # linuxdeploy bundles an old eu-strip that can't handle Ubuntu 22.04 ELF .relr.dyn sections
+          NO_STRIP: 'true'
         with:
           tagName: v__VERSION__
           releaseName: "ClawZ v__VERSION__"
