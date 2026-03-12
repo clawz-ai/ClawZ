@@ -64,7 +64,7 @@ jobs:
         run: bash scripts/download-node.sh 22.22.0 ${{ matrix.rust_target }}
 
       - name: Bundle openclaw
-        run: bash scripts/bundle-openclaw.sh
+        run: bash scripts/bundle-openclaw.sh "" ${{ matrix.rust_target }}
 
       - name: Generate build info
         run: bash scripts/gen-build-info.sh
@@ -107,6 +107,17 @@ jobs:
               --entitlements src-tauri/entitlements.plist \
               "$bin"
           done
+
+          # Sign NodeHelper.app as a bundle (inside-out: inner binaries signed above).
+          # macOS requires bundle-level signing for entitlements to take effect;
+          # without this, V8 JIT crashes with SIGTRAP on x64 Hardened Runtime.
+          if [ -d "resources/NodeHelper.app" ]; then
+            echo "Signing bundle: resources/NodeHelper.app"
+            codesign --force --options runtime --timestamp \
+              --sign "$APPLE_SIGNING_IDENTITY" \
+              --entitlements src-tauri/entitlements.plist \
+              "resources/NodeHelper.app"
+          fi
 
       - name: Build Tauri app (sign only, no notarization)
         uses: tauri-apps/tauri-action@v0

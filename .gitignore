@@ -31,3 +31,4 @@ src-tauri/binaries/
 # Claude
 .claude/
 CLAUDE.md
+AGENTS.md

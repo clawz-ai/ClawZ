@@ -125,7 +125,14 @@ cat > "$HELPER_APP/Contents/Info.plist" <<'PLIST'
 </dict>
 </plist>
 PLIST
-echo "✓ NodeHelper.app created: $HELPER_APP"
+
+  # Ad-hoc sign the bundle WITHOUT Hardened Runtime so V8 JIT works on all
+  # architectures without needing entitlements. Hardened Runtime blocks JIT
+  # unless allow-jit entitlement is present, but ad-hoc entitlements are not
+  # reliably honored on all Intel Mac configurations.
+  # Release builds (CI) re-sign with real identity + runtime + entitlements.
+  codesign --force --sign "-" "$HELPER_APP"
+  echo "✓ NodeHelper.app created and signed: $HELPER_APP"
 fi
 
 echo "✓ Node.js binary saved: $DEST"
