@@ -114,6 +114,8 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           # APPLE_ID/PASSWORD/TEAM_ID intentionally omitted to skip notarization
           # Notarization is handled separately below with timeout control
+          # Required for linuxdeploy AppImage to run without FUSE in GitHub Actions sandbox
+          APPIMAGE_EXTRACT_AND_RUN: 1
         with:
           tagName: v__VERSION__
           releaseName: "ClawZ v__VERSION__"
