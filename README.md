@@ -13,7 +13,7 @@
   <a href="https://github.com/clawz-ai/ClawZ/actions/workflows/check.yml"><img src="https://github.com/clawz-ai/ClawZ/actions/workflows/check.yml/badge.svg" alt="CI" /></a>
   <a href="https://github.com/clawz-ai/ClawZ/releases"><img src="https://img.shields.io/github/v/release/clawz-ai/ClawZ?include_prereleases&label=release" alt="Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/clawz-ai/ClawZ" alt="License" /></a>
-  <img src="https://img.shields.io/badge/platform-macOS-blue" alt="Platform" />
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux-blue" alt="Platform" />
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
 </p>
 
@@ -113,8 +113,8 @@ Full Chinese and English interface. Auto-detects system language.
 </td>
 <td>
 
-**🖥️ Native macOS App**<br/>
-Built with Tauri and Rust for native performance. Linux and Windows support planned.
+**🖥️ Cross-Platform Desktop App**<br/>
+Built with Tauri and Rust for native performance. macOS and Linux supported; Windows support planned.
 
 </td>
 </tr>
@@ -143,8 +143,24 @@ Grab the latest release for your platform from the [Releases page](https://githu
 |----------|--------|
 | macOS (Apple Silicon) | `.dmg` |
 | macOS (Intel) | `.dmg` |
+| Linux x86_64 (Ubuntu/Debian) | `.deb` |
+| Linux x86_64 (Fedora/RHEL) | `.rpm` |
+| Linux arm64 (Ubuntu/Debian) | `.deb` |
+| Linux arm64 (Fedora/RHEL) | `.rpm` |
 
-> **macOS users:** If macOS says the app is "damaged", run: `xattr -cr /Applications/ClawZ.app`
+> **macOS users:** If macOS says the app is "damaged" or "cannot verify the developer", run:
+> ```bash
+> sudo xattr -rd com.apple.quarantine /Applications/ClawZ.app
+> ```
+
+### System Requirements
+
+| Platform | Minimum Version |
+|----------|----------------|
+| macOS (Intel) | macOS 10.15 Catalina |
+| macOS (Apple Silicon) | macOS 11.0 Big Sur |
+| Linux | Ubuntu 22.04 / Debian 12 / Fedora 36 (glibc 2.35+, WebKit2GTK 4.1+) |
+| Windows | Coming soon |
 
 ### Build from Source
 

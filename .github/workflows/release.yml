@@ -23,6 +23,9 @@ jobs:
           - platform: ubuntu-22.04
             args: --target x86_64-unknown-linux-gnu --bundles deb,rpm
             rust_target: x86_64-unknown-linux-gnu
+          - platform: ubuntu-22.04-arm
+            args: --target aarch64-unknown-linux-gnu --bundles deb,rpm
+            rust_target: aarch64-unknown-linux-gnu
 
     runs-on: ${{ matrix.platform }}
 
