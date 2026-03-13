@@ -99,11 +99,12 @@ cargo clippy --locked -- -D warnings
 ## Submitting Changes
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Make your changes
-4. Ensure tests pass: `pnpm test:coverage` and `cargo clippy --locked -- -D warnings`
-5. Commit with a descriptive message
-6. Push and open a Pull Request
+2. Create a task branch: `git checkout -b feat/your-feature` or `git checkout -b fix/your-fix`
+3. Branch names for new work must start with `feat/` or `fix/` only. Do not create new branches with prefixes like `chore/`, `docs/`, `refactor/`, or any other prefix.
+4. Make your changes
+5. Ensure tests pass: `pnpm test:coverage` and `cargo clippy --locked -- -D warnings`
+6. Commit with a descriptive message
+7. Push and open a Pull Request
 
 ### Commit Messages
 
