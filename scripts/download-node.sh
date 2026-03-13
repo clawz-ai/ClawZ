@@ -89,6 +89,7 @@ else
   HELPER_MACOS="$HELPER_APP/Contents/MacOS"
   DEST="$HELPER_MACOS/node"
   mkdir -p "$HELPER_MACOS"
+  rm -f "$HELPER_APP/.gitkeep" "$HELPER_APP/Contents/.gitkeep"
   # Create an empty Linux placeholder so tauri.conf.json resources don't error
   mkdir -p "$ROOT/resources/node/bin"
 fi

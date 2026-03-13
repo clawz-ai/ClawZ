@@ -4,10 +4,10 @@
     "node": {
       "version": "22.22.0",
       "checksums": {
-        "darwin-arm64": "73ca5f1b6efc0d8f16ff041814f24865c2ca24e3d2b5b8f0e391d7c4a1769e05",
-        "darwin-x64": "6f95bc49d0f7db8bc7d3456552effaab3278cb8b4b3f8f00a3b4601aa09291a9",
-        "linux-arm64": "2c552e7d0352085148d1b6a0272656f31fae7e06ecfceeb658a094dc6518c097",
-        "linux-x64": "680d3f30b24a7ff24b98db5e96f294c0070f8f9078df658da1bce1b9c9873c88"
+        "darwin-arm64": "5ed4db0fcf1eaf84d91ad12462631d73bf4576c1377e192d222e48026a902640",
+        "darwin-x64": "5ea50c9d6dea3dfa3abb66b2656f7a4e1c8cef23432b558d45fb538c7b5dedce",
+        "linux-arm64": "25ba95dfb96871fa2ef977f11f95ea90818c8fa15c0f2110771db08d4ba423be",
+        "linux-x64": "c33c39ed9c80deddde77c960d00119918b9e352426fd604ba41638d6526a4744"
       }
     },
     "openclaw": {

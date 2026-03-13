@@ -20,14 +20,7 @@ resources/node/*
 !resources/node/.gitkeep
 resources/openclaw/*
 !resources/openclaw/.gitkeep
-resources/NodeHelper.app/*
-!resources/NodeHelper.app/.gitkeep
-!resources/NodeHelper.app/Contents/
-resources/NodeHelper.app/Contents/*
-!resources/NodeHelper.app/Contents/.gitkeep
-!resources/NodeHelper.app/Contents/MacOS/
-resources/NodeHelper.app/Contents/MacOS/*
-!resources/NodeHelper.app/Contents/MacOS/.gitkeep
+resources/NodeHelper.app/
 
 # Environment
 .env
