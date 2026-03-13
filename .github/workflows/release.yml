@@ -117,8 +117,19 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
+          # Sign native addons/helpers in resources/ so Apple notarization passes.
+          #
+          # Do NOT re-sign the official Node.js executables we bundle into:
+          #   - resources/NodeHelper.app/Contents/MacOS/node
+          #   - resources/node/bin/node
+          #
+          # Those binaries already ship with Node.js Foundation signatures and
+          # the broader V8 entitlements required on Intel macOS. Re-signing them
+          # with our slimmer app entitlements strips permissions like
+          # allow-unsigned-executable-memory / disable-executable-page-protection
+          # and causes x64 release builds to crash at runtime.
           find resources -type f \( \
-            -name "node" -o -name "*.node" -o -name "*.dylib" \
+            -name "*.node" -o -name "*.dylib" \
             -o -name "spawn-helper" \
           \) | while read -r bin; do
             echo "Signing: $bin"
@@ -128,6 +139,8 @@ jobs:
               "$bin"
           done
 
+          # Sign the helper app bundle wrapper while preserving the original
+          # Node binary signature inside it.
           if [ -d "resources/NodeHelper.app" ]; then
             echo "Signing bundle: resources/NodeHelper.app"
             codesign --force --options runtime --timestamp \
