@@ -73,6 +73,8 @@ pub fn init_resource_dir(path: PathBuf) {
 /// Production layout differs by platform:
 /// - macOS: `{RESOURCE_DIR}/NodeHelper.app/Contents/MacOS/node`
 ///   (Helper app with LSUIElement=true suppresses Dock icons)
+/// - macOS x86_64 fallback: `{RESOURCE_DIR}/node/bin/node`
+///   (avoids Intel-specific V8 JIT crashes seen from inside NodeHelper.app)
 /// - Linux: `{RESOURCE_DIR}/node/bin/node`
 ///
 /// In dev mode it falls back to the system `node`.
@@ -81,9 +83,22 @@ pub fn bundled_node() -> PathBuf {
     if let Some(res) = RESOURCE_DIR.get() {
         #[cfg(target_os = "macos")]
         {
+            #[cfg(target_arch = "x86_64")]
+            {
+                let plain = res.join("node/bin/node");
+                if plain.exists() {
+                    return plain;
+                }
+            }
+
             let node = res.join("NodeHelper.app/Contents/MacOS/node");
             if node.exists() {
                 return node;
+            }
+
+            let plain = res.join("node/bin/node");
+            if plain.exists() {
+                return plain;
             }
         }
         #[cfg(target_os = "linux")]

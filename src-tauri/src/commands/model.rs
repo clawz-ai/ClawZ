@@ -27,6 +27,22 @@ pub struct OAuthProgress {
 /// Uses the same bundled path resolution as `oc_run()` to avoid relying on system PATH.
 pub(crate) async fn oc_config_set(path: &str, value: &str) -> Result<(), String> {
     log::debug!("[oc_config_set] {} {}", path, value);
+    let cli_result = oc_config_set_via_cli(path, value).await;
+    match cli_result {
+        Ok(()) => Ok(()),
+        Err(err) if should_fallback_to_direct_write(&err) => {
+            log::warn!(
+                "[oc_config_set] CLI config write failed for {}: {}. Falling back to direct file write.",
+                path,
+                err
+            );
+            super::config::write_config_value_direct(path, value).await
+        }
+        Err(err) => Err(err),
+    }
+}
+
+async fn oc_config_set_via_cli(path: &str, value: &str) -> Result<(), String> {
     let node = super::cli::bundled_node();
     let openclaw = super::cli::bundled_openclaw()?;
 
@@ -51,6 +67,14 @@ pub(crate) async fn oc_config_set(path: &str, value: &str) -> Result<(), String>
     };
     log::error!("openclaw config set failed: {}", msg);
     Err(format!("Failed to write config: {}", msg))
+}
+
+fn should_fallback_to_direct_write(message: &str) -> bool {
+    let lower = message.to_ascii_lowercase();
+    lower.contains("failed to execute openclaw config set")
+        || lower.contains("openclaw.mjs not found")
+        || (lower.contains("fatal error in")
+            && (lower.contains("native stack trace") || lower.contains("check failed:")))
 }
 
 fn shell_escape(s: &str) -> String {
@@ -1846,4 +1870,22 @@ pub async fn remove_provider(provider: String) -> Result<String, String> {
 
     log::info!("[remove_provider] {} removed", provider);
     Ok("ok".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_fallback_to_direct_write;
+
+    #[test]
+    fn config_write_falls_back_on_v8_crash_output() {
+        let crash = "Fatal error in , line 0\nCheck failed: 12 == (*__error()).\nNative stack trace";
+        assert!(should_fallback_to_direct_write(crash));
+    }
+
+    #[test]
+    fn config_write_does_not_mask_regular_cli_errors() {
+        assert!(!should_fallback_to_direct_write(
+            "Failed to write config: unknown provider"
+        ));
+    }
 }

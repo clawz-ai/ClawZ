@@ -6,7 +6,10 @@
 # LSUIElement=true, macOS treats it as a background-only process and does NOT
 # show Dock/menu-bar icons.
 #
-# Output: resources/NodeHelper.app/Contents/{Info.plist, MacOS/node}
+# Output:
+#   macOS  → resources/NodeHelper.app/Contents/{Info.plist, MacOS/node}
+#          → resources/node/bin/node (Intel fallback binary)
+#   Linux  → resources/node/bin/node
 #
 # Usage: bash scripts/download-node.sh [NODE_VERSION] [TARGET_TRIPLE]
 # Default version: 22.22.0 (LTS)
@@ -75,12 +78,17 @@ else
   HELPER_MACOS="$HELPER_APP/Contents/MacOS"
   DEST="$HELPER_MACOS/node"
   mkdir -p "$HELPER_MACOS"
-  # Create an empty Linux placeholder so tauri.conf.json resources don't error
+  RAW_DEST="$ROOT/resources/node/bin/node"
   mkdir -p "$ROOT/resources/node/bin"
 fi
 
 # Skip cache check when cross-compiling (existing binary may be wrong arch)
 if [ -f "$DEST" ] && [ -z "$TARGET_TRIPLE" ]; then
+  if [ "$OS" != "Linux" ] && [ "$ARCH" = "x86_64" ] && [ ! -f "$RAW_DEST" ]; then
+    cp "$DEST" "$RAW_DEST"
+    chmod +x "$RAW_DEST"
+    echo "✓ Node.js fallback binary copied: $RAW_DEST"
+  fi
   echo "✓ Node.js binary already present: $DEST"
   exit 0
 fi
@@ -101,6 +109,11 @@ fi
 
 cp "$TMPDIR/$NODE_BIN_PATH" "$DEST"
 chmod +x "$DEST"
+
+if [ "$OS" != "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+  cp "$TMPDIR/$NODE_BIN_PATH" "$RAW_DEST"
+  chmod +x "$RAW_DEST"
+fi
 
 # Create Info.plist for the helper app (macOS icon suppression — macOS only)
 if [ "$OS" != "Linux" ]; then
@@ -136,3 +149,6 @@ PLIST
 fi
 
 echo "✓ Node.js binary saved: $DEST"
+if [ "${RAW_DEST:-}" != "" ] && [ -f "$RAW_DEST" ]; then
+  echo "✓ Node.js fallback binary saved: $RAW_DEST"
+fi

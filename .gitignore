@@ -17,6 +17,7 @@ src/lib/buildInfo.ts
 
 # Bundled runtime assets (downloaded by scripts/download-node.sh + bundle-openclaw.sh)
 resources/NodeHelper.app/
+resources/node/
 resources/openclaw/
 
 # Environment
