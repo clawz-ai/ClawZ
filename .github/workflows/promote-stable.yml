@@ -11,6 +11,11 @@ on:
         description: "Target stable tag (for example: v0.1.3)"
         required: true
         type: string
+      allow_superseded_rc:
+        description: "Allow promoting an older RC after a newer RC exists"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -46,6 +51,13 @@ jobs:
               ;;
           esac
 
+          RC_TAG_INPUT="${{ inputs.rc_tag }}"
+          RC_BASE_TAG="${RC_TAG_INPUT%%-rc.*}"
+          if [ "${{ inputs.stable_tag }}" != "${RC_BASE_TAG}" ]; then
+            echo "stable_tag must match the base version of rc_tag (${RC_BASE_TAG})"
+            exit 1
+          fi
+
       - name: Ensure stable tag version matches build manifest
         run: |
           EXPECTED_TAG="v$(node scripts/build-manifest.mjs get appVersion)"
@@ -53,6 +65,51 @@ jobs:
             echo "stable_tag must match build-manifest appVersion ($EXPECTED_TAG)"
             exit 1
           fi
+
+      - name: Reject superseded RC by default
+        env:
+          RC_TAG: ${{ inputs.rc_tag }}
+          ALLOW_SUPERSEDED_RC: ${{ inputs.allow_superseded_rc }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          rc_tag = os.environ["RC_TAG"]
+          allow_override = os.environ.get("ALLOW_SUPERSEDED_RC", "false").lower() == "true"
+
+          match = re.fullmatch(r"(v\d+\.\d+\.\d+)-rc\.(\d+)", rc_tag)
+          if not match:
+              print(f"Invalid RC tag: {rc_tag}")
+              sys.exit(1)
+
+          base_tag = match.group(1)
+          latest_tag = rc_tag
+          latest_seq = int(match.group(2))
+
+          tags = subprocess.check_output(
+              ["git", "tag", "-l", f"{base_tag}-rc.*"],
+              text=True,
+          ).splitlines()
+
+          for tag in tags:
+              other = re.fullmatch(rf"{re.escape(base_tag)}-rc\.(\d+)", tag)
+              if other and int(other.group(1)) > latest_seq:
+                  latest_seq = int(other.group(1))
+                  latest_tag = tag
+
+          if latest_tag != rc_tag and not allow_override:
+              print(f"{rc_tag} has been superseded by newer RC {latest_tag}")
+              print("Re-run with allow_superseded_rc=true only if you intentionally want to promote the older RC.")
+              sys.exit(1)
+
+          if latest_tag != rc_tag:
+              print(f"Override accepted: promoting superseded RC {rc_tag} while newer RC {latest_tag} exists.")
+          else:
+              print(f"{rc_tag} is the latest RC for {base_tag}")
+          PY
 
       - name: Download RC notarization metadata
         env:

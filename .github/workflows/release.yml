@@ -305,3 +305,82 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${RC_TAG}" "notarization-${{ matrix.rust_target }}.json" --clobber
+
+  supersede_previous_rcs:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark previous RC releases as superseded
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_RC_TAG: ${{ github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+
+          current_tag = os.environ["CURRENT_RC_TAG"]
+          match = re.fullmatch(r"(v\d+\.\d+\.\d+)-rc\.(\d+)", current_tag)
+          if not match:
+              raise SystemExit(f"Current RC tag does not match expected format: {current_tag}")
+
+          base_tag = match.group(1)
+          current_seq = int(match.group(2))
+
+          releases = json.loads(
+              subprocess.check_output(
+                  [
+                      "gh",
+                      "api",
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/releases?per_page=100",
+                  ],
+                  text=True,
+              )
+          )
+
+          previous_tags = []
+          for release in releases:
+              tag = release.get("tag_name", "")
+              other = re.fullmatch(rf"{re.escape(base_tag)}-rc\.(\d+)", tag)
+              if other and int(other.group(1)) < current_seq:
+                  previous_tags.append((int(other.group(1)), tag))
+
+          previous_tags.sort()
+          if not previous_tags:
+              print(f"No previous RC releases found for {base_tag}")
+              raise SystemExit(0)
+
+          for _, tag in previous_tags:
+              notes = f"""## Superseded Release Candidate
+
+          This release candidate has been superseded by newer release candidate `{current_tag}`.
+
+          - Do not promote this RC to stable unless you intentionally roll back
+          - Use `{current_tag}` for ongoing validation and emergency distribution
+          """
+
+              with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+                  handle.write(notes)
+                  notes_path = handle.name
+
+              try:
+                  subprocess.check_call(
+                      [
+                          "gh",
+                          "release",
+                          "edit",
+                          tag,
+                          "--title",
+                          f"ClawZ {tag} (Superseded by {current_tag})",
+                          "--notes-file",
+                          notes_path,
+                      ]
+                  )
+                  print(f"Marked {tag} as superseded by {current_tag}")
+              finally:
+                  os.unlink(notes_path)
+          PY

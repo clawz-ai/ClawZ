@@ -12,6 +12,7 @@
 
 - 构建版本号由 CI 注入，而不是来自 Git 历史长度
 - RC 标签只生成 candidate release
+- 同一基础版本只允许最新 RC 继续进入 emergency / stable 流程
 - emergency 发布只会公开 RC，不会污染 stable
 - stable 晋升前必须拿到 notarized macOS 资产
 - 主下载入口只指向 stable，不再默认要求用户手工执行 `xattr`
@@ -123,6 +124,7 @@ git push origin vX.Y.Z-rc.1
 - macOS x86_64
 - Linux x86_64
 - Linux arm64
+- 如果同一版本已有更早的 RC，确认它们会被标记为 `Superseded by vX.Y.Z-rc.N`
 
 ### 必查项
 
@@ -145,6 +147,7 @@ git push origin vX.Y.Z-rc.1
   - `pending`
   - `submit_failed`
   - `missing_dmg`
+- 如果存在旧 RC，新 RC 成功后旧 RC 会被标记为 `Superseded by ...`
 
 ### 失败判定
 
@@ -172,6 +175,7 @@ RC release 已存在，且仍处于 draft。
 - Workflow: `Publish Emergency RC`
 - 输入：
   - `rc_tag = vX.Y.Z-rc.1`
+  - `allow_superseded_rc = false`
 
 2. 等待 workflow 完成
 
@@ -187,12 +191,14 @@ RC release 已存在，且仍处于 draft。
   - stable 会在 notarization 完成后补发
 - `xattr` 指引是否只出现在 emergency release notes 中
 - README 主下载入口是否未被修改成指向 prerelease
+- 如果存在 `vX.Y.Z-rc.2`，`vX.Y.Z-rc.1` 是否会被默认拒绝发布
 
 ### 通过标准
 
 - `vX.Y.Z-rc.1` 被公开为 `prerelease`
 - 没有生成或覆盖 stable release
 - main README 仍然只描述 stable/notarized 下载路径
+- superseded RC 默认不能被发布，除非显式设置 `allow_superseded_rc = true`
 
 ### 失败判定
 
@@ -225,6 +231,7 @@ RC release 已存在，且仍处于 draft。
 - 输入：
   - `rc_tag = vX.Y.Z-rc.1`
   - `stable_tag = vX.Y.Z`
+  - `allow_superseded_rc = false`
 
 2. 等待 workflow 完成
 
@@ -238,6 +245,7 @@ RC release 已存在，且仍处于 draft。
 - stable release 是否从 RC 资产复制生成
 - stable release title 是否是正式版语义
 - RC release 是否被标记为 `Superseded`
+- 如果存在更新的 RC，旧 RC 是否会被默认拒绝晋升 stable
 
 ### 通过标准
 
@@ -245,6 +253,7 @@ RC release 已存在，且仍处于 draft。
 - stable release 不再是 prerelease
 - stable release 的 macOS 资产来自 notarized RC
 - RC release 标题变成 `Superseded`
+- 非最新 RC 默认不能晋升 stable，除非显式设置 `allow_superseded_rc = true`
 
 ### 反向验证
 
@@ -258,6 +267,17 @@ RC release 已存在，且仍处于 draft。
 - stable promotion 被拒绝
 - workflow 输出明确错误
 - 不会生成新的 stable release
+
+建议再补一组 superseded 演练：
+
+1. 创建 `vX.Y.Z-rc.2`
+2. 再尝试把 `vX.Y.Z-rc.1` 用于 emergency 或 stable
+
+期望结果：
+
+- `vX.Y.Z-rc.1` 被识别为 superseded
+- workflow 默认拒绝继续发布旧 RC
+- 只有在你明确设置 `allow_superseded_rc = true` 时，才允许手工回退到旧 RC
 
 ## Phase D: 发布后回收与用户入口检查
 
@@ -314,7 +334,8 @@ Open issues:
 2. build number 是不是来自 CI 注入？
 3. emergency workflow 会不会只公开 prerelease？
 4. stable promotion 会不会拒绝未 notarized 的 macOS 资产？
-5. stable 发布后，默认下载入口是不是只指向 stable？
-6. `xattr` 是否已经从主 README 中移除，只保留在应急发布说明里？
+5. `rc.2` 出现后，`rc.1` 会不会默认失去晋升资格？
+6. stable 发布后，默认下载入口是不是只指向 stable？
+7. `xattr` 是否已经从主 README 中移除，只保留在应急发布说明里？
 
-只要这 6 个问题都能明确回答“是”，这次 dry run 才算真正通过。
+只要这 7 个问题都能明确回答“是”，这次 dry run 才算真正通过。
