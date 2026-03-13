@@ -6,7 +6,7 @@ Thank you for your interest in contributing to ClawZ! This document provides gui
 
 ### Prerequisites
 
-- **Node.js** >= 22.12.0
+- **Node.js** 22.22.0 (see `.nvmrc`)
 - **Rust** >= 1.77.2
 - **pnpm** >= 10.x
 - **Tauri CLI**: `cargo install tauri-cli`
@@ -28,7 +28,7 @@ sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
 ```bash
 git clone https://github.com/clawz-ai/ClawZ.git
 cd ClawZ
-pnpm install
+pnpm install --frozen-lockfile
 pnpm tauri dev
 ```
 
@@ -92,8 +92,8 @@ pnpm test:coverage
 
 # Rust check + lint
 cd src-tauri
-cargo check
-cargo clippy -- -D warnings
+cargo check --locked
+cargo clippy --locked -- -D warnings
 ```
 
 ## Submitting Changes
@@ -101,7 +101,7 @@ cargo clippy -- -D warnings
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Make your changes
-4. Ensure tests pass: `pnpm test:coverage` and `cargo clippy -- -D warnings`
+4. Ensure tests pass: `pnpm test:coverage` and `cargo clippy --locked -- -D warnings`
 5. Commit with a descriptive message
 6. Push and open a Pull Request
 

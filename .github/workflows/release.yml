@@ -1,15 +1,18 @@
-name: Release
+name: RC Release
 
 on:
   push:
     tags:
-      - "v*"
+      - "v*-rc.*"
 
 permissions:
   contents: write
 
 jobs:
   release:
+    env:
+      BUILD_NUMBER: ${{ github.run_number }}
+      RC_TAG: ${{ github.ref_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -17,20 +20,30 @@ jobs:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             rust_target: aarch64-apple-darwin
+            platform_id: mac
+            arch_id: arm64
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             rust_target: x86_64-apple-darwin
+            platform_id: mac
+            arch_id: x64
           - platform: ubuntu-22.04
             args: --target x86_64-unknown-linux-gnu --bundles deb,rpm
             rust_target: x86_64-unknown-linux-gnu
+            platform_id: linux
+            arch_id: x64
           - platform: ubuntu-22.04-arm
             args: --target aarch64-unknown-linux-gnu --bundles deb,rpm
             rust_target: aarch64-unknown-linux-gnu
+            platform_id: linux
+            arch_id: arm64
 
     runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -38,7 +51,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install Rust stable
@@ -55,13 +68,21 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libfuse2
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libfuse2
+
+      - name: Verify build manifest
+        run: node scripts/build-manifest.mjs check
 
       - name: Install frontend dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Bundle Node.js runtime
-        run: bash scripts/download-node.sh 22.22.0 ${{ matrix.rust_target }}
+        run: bash scripts/download-node.sh "" ${{ matrix.rust_target }}
 
       - name: Bundle openclaw
         run: bash scripts/bundle-openclaw.sh "" ${{ matrix.rust_target }}
@@ -96,7 +117,6 @@ jobs:
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
-          # Sign all native binaries in resources/ so Apple notarization passes
           find resources -type f \( \
             -name "node" -o -name "*.node" -o -name "*.dylib" \
             -o -name "spawn-helper" \
@@ -108,9 +128,6 @@ jobs:
               "$bin"
           done
 
-          # Sign NodeHelper.app as a bundle (inside-out: inner binaries signed above).
-          # macOS requires bundle-level signing for entitlements to take effect;
-          # without this, V8 JIT crashes with SIGTRAP on x64 Hardened Runtime.
           if [ -d "resources/NodeHelper.app" ]; then
             echo "Signing bundle: resources/NodeHelper.app"
             codesign --force --options runtime --timestamp \
@@ -119,84 +136,251 @@ jobs:
               "resources/NodeHelper.app"
           fi
 
-      - name: Build Tauri app (sign only, no notarization)
+      - name: Build candidate artifacts
         uses: tauri-apps/tauri-action@v0
         env:
+          BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # APPLE_ID/PASSWORD/TEAM_ID intentionally omitted to skip notarization
-          # Notarization is handled separately below with timeout control
-          # Required for linuxdeploy AppImage to run without FUSE in GitHub Actions sandbox
           APPIMAGE_EXTRACT_AND_RUN: 1
-          # linuxdeploy bundles an old eu-strip that can't handle Ubuntu 22.04 ELF .relr.dyn sections
-          NO_STRIP: 'true'
+          NO_STRIP: "true"
         with:
-          tagName: v__VERSION__
-          releaseName: "ClawZ v__VERSION__"
+          tagName: ${{ github.ref_name }}
+          releaseName: "ClawZ ${{ github.ref_name }} Candidate"
           releaseBody: |
-            ## macOS 提示 / macOS Notice
+            ## Release Candidate
 
-            如果打开时提示「已损坏，无法打开」或「无法验证开发者」，请在终端执行以下命令后重新打开：
+            This draft release is a candidate build for validation and notarization.
 
-            If you see "app is damaged and can't be opened" or "cannot verify the developer", run this in Terminal before opening:
-
-                sudo xattr -rd com.apple.quarantine /Applications/ClawZ.app
-
-            ---
+            - Default state: draft
+            - Public emergency distribution: use the `Publish Emergency RC` workflow
+            - Stable publication: use the `Promote Stable Release` workflow after notarization succeeds
 
             See the [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
           releaseDraft: true
-          prerelease: false
+          prerelease: true
           args: ${{ matrix.args }}
 
-      - name: Notarize and re-upload DMG
+      - name: Initialize notarization metadata
+        run: |
+          STATUS="not_applicable"
+          SIGNED_ONLY="false"
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            STATUS="awaiting_notarization"
+            SIGNED_ONLY="true"
+          fi
+          cat > "notarization-${{ matrix.rust_target }}.json" <<EOF
+          {
+            "tag": "${RC_TAG}",
+            "target": "${{ matrix.rust_target }}",
+            "platform": "${{ runner.os }}",
+            "status": "${STATUS}",
+            "signedOnly": ${SIGNED_ONLY}
+          }
+          EOF
+
+      - name: Notarize candidate DMG
         if: runner.os == 'macOS' && env.APPLE_ID != ''
-        continue-on-error: true
-        timeout-minutes: 360
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          NOTARIZATION_FILE="notarization-${{ matrix.rust_target }}.json"
           DMG_PATH=$(find src-tauri/target -name "*.dmg" -type f | head -1)
+          write_notarization_file() {
+            local status="$1"
+            local signed_only="$2"
+            local submission_id="${3:-}"
+            if [ -n "$submission_id" ]; then
+              cat > "$NOTARIZATION_FILE" <<EOF
+          {
+            "tag": "${RC_TAG}",
+            "target": "${{ matrix.rust_target }}",
+            "platform": "${{ runner.os }}",
+            "status": "${status}",
+            "signedOnly": ${signed_only},
+            "submissionId": "${submission_id}"
+          }
+          EOF
+            else
+              cat > "$NOTARIZATION_FILE" <<EOF
+          {
+            "tag": "${RC_TAG}",
+            "target": "${{ matrix.rust_target }}",
+            "platform": "${{ runner.os }}",
+            "status": "${status}",
+            "signedOnly": ${signed_only}
+          }
+          EOF
+            fi
+          }
+
           if [ -z "$DMG_PATH" ]; then
-            echo "No DMG found, skipping notarization"
+            write_notarization_file "missing_dmg" "true"
             exit 0
           fi
-          DMG_NAME=$(basename "$DMG_PATH")
-          echo "Notarizing: $DMG_PATH"
 
-          # Submit for notarization (async)
           SUBMIT_OUTPUT=$(xcrun notarytool submit "$DMG_PATH" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --output-format json)
-          SUBMISSION_ID=$(echo "$SUBMIT_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-          echo "Submission ID: $SUBMISSION_ID"
+            --output-format json) || {
+              write_notarization_file "submit_failed" "true"
+              exit 0
+            }
 
-          # Poll for result with 110min timeout (leaves margin within 120min step timeout)
+          SUBMISSION_ID=$(python3 -c "import sys, json; print(json.load(sys.stdin)['id'])" <<< "$SUBMIT_OUTPUT")
+
           if xcrun notarytool wait "$SUBMISSION_ID" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --timeout 350m; then
-            echo "Notarization succeeded, stapling ticket..."
+            --timeout 25m; then
             xcrun stapler staple "$DMG_PATH"
-
-            # Replace the un-notarized DMG in the release with the stapled one
-            TAG_NAME=$(echo "$GITHUB_REF" | sed 's|refs/tags/||')
-            echo "Re-uploading stapled DMG to release $TAG_NAME..."
-            gh release upload "$TAG_NAME" "$DMG_PATH" --clobber
-            echo "Done! Stapled DMG uploaded to release."
+            STATUS="notarized"
+            SIGNED_ONLY="false"
           else
-            echo "::warning::Notarization did not complete in time. Release will have signed but un-notarized DMG."
-            # Log notarization details for debugging
+            STATUS="pending"
+            SIGNED_ONLY="true"
             xcrun notarytool info "$SUBMISSION_ID" \
               --apple-id "$APPLE_ID" \
               --password "$APPLE_PASSWORD" \
               --team-id "$APPLE_TEAM_ID" || true
           fi
+
+          write_notarization_file "$STATUS" "$SIGNED_ONLY" "$SUBMISSION_ID"
+
+      - name: Normalize and upload package assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APP_VERSION="$(node scripts/build-manifest.mjs get appVersion)"
+          BUNDLE_DIR="src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          NORMALIZED_DIR="$RUNNER_TEMP/normalized-assets"
+
+          mkdir -p "$NORMALIZED_DIR"
+
+          while IFS= read -r -d '' artifact; do
+            base_name="$(basename "$artifact")"
+
+            case "$base_name" in
+              *.app.tar.gz) suffix="app.tar.gz" ;;
+              *.dmg) suffix="dmg" ;;
+              *.deb) suffix="deb" ;;
+              *.rpm) suffix="rpm" ;;
+              *.msi) suffix="msi" ;;
+              *.exe) suffix="exe" ;;
+              *)
+                continue
+                ;;
+            esac
+
+            normalized_name="ClawZ-${APP_VERSION}-${{ matrix.platform_id }}-${{ matrix.arch_id }}.${suffix}"
+            cp "$artifact" "$NORMALIZED_DIR/$normalized_name"
+
+            gh release delete-asset "${RC_TAG}" "$base_name" --yes >/dev/null 2>&1 || true
+            gh release delete-asset "${RC_TAG}" "$normalized_name" --yes >/dev/null 2>&1 || true
+          done < <(find "$BUNDLE_DIR" -type f \( \
+            -name "*.app.tar.gz" -o \
+            -name "*.dmg" -o \
+            -name "*.deb" -o \
+            -name "*.rpm" -o \
+            -name "*.msi" -o \
+            -name "*.exe" \
+          \) -print0)
+
+          if ! find "$NORMALIZED_DIR" -type f -print -quit | grep -q .; then
+            echo "No package assets found in $BUNDLE_DIR"
+            exit 1
+          fi
+
+          gh release upload "${RC_TAG}" "$NORMALIZED_DIR"/* --clobber
+
+      - name: Upload notarization metadata
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${RC_TAG}" "notarization-${{ matrix.rust_target }}.json" --clobber
+
+  supersede_previous_rcs:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark previous RC releases as superseded
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_RC_TAG: ${{ github.ref_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+
+          current_tag = os.environ["CURRENT_RC_TAG"]
+          match = re.fullmatch(r"(v\d+\.\d+\.\d+)-rc\.(\d+)", current_tag)
+          if not match:
+              raise SystemExit(f"Current RC tag does not match expected format: {current_tag}")
+
+          base_tag = match.group(1)
+          current_seq = int(match.group(2))
+
+          releases = json.loads(
+              subprocess.check_output(
+                  [
+                      "gh",
+                      "api",
+                      f"repos/{os.environ['GITHUB_REPOSITORY']}/releases?per_page=100",
+                  ],
+                  text=True,
+              )
+          )
+
+          previous_tags = []
+          for release in releases:
+              tag = release.get("tag_name", "")
+              other = re.fullmatch(rf"{re.escape(base_tag)}-rc\.(\d+)", tag)
+              if other and int(other.group(1)) < current_seq:
+                  previous_tags.append((int(other.group(1)), tag))
+
+          previous_tags.sort()
+          if not previous_tags:
+              print(f"No previous RC releases found for {base_tag}")
+              raise SystemExit(0)
+
+          for _, tag in previous_tags:
+              notes = f"""## Superseded Release Candidate
+
+          This release candidate has been superseded by newer release candidate `{current_tag}`.
+
+          - Do not promote this RC to stable unless you intentionally roll back
+          - Use `{current_tag}` for ongoing validation and emergency distribution
+          """
+
+              with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+                  handle.write(notes)
+                  notes_path = handle.name
+
+              try:
+                  subprocess.check_call(
+                      [
+                          "gh",
+                          "release",
+                          "edit",
+                          tag,
+                          "--title",
+                          f"ClawZ {tag} (Superseded by {current_tag})",
+                          "--notes-file",
+                          notes_path,
+                      ]
+                  )
+                  print(f"Marked {tag} as superseded by {current_tag}")
+              finally:
+                  os.unlink(notes_path)
+          PY

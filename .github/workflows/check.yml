@@ -16,15 +16,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
 
-      - run: pnpm install
+      - name: Verify build manifest
+        run: node scripts/build-manifest.mjs check
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Generate build info
         run: bash scripts/gen-build-info.sh
@@ -40,6 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -62,8 +69,8 @@ jobs:
 
       - name: Cargo check
         working-directory: src-tauri
-        run: cargo check
+        run: cargo check --locked
 
       - name: Clippy
         working-directory: src-tauri
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --locked -- -D warnings

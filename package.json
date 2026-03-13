@@ -3,15 +3,23 @@
   "version": "0.1.2",
   "description": "ClawZ - AI Agent visual management desktop app for OpenClaw framework",
   "scripts": {
-    "dev": "bash scripts/gen-build-info.sh && vite",
-    "build": "bash scripts/gen-build-info.sh && tsc && vite build",
+    "manifest:sync": "node scripts/build-manifest.mjs sync",
+    "manifest:check": "node scripts/build-manifest.mjs check",
+    "dev": "node scripts/build-manifest.mjs check && bash scripts/gen-build-info.sh && vite",
+    "build": "node scripts/build-manifest.mjs check && bash scripts/gen-build-info.sh && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
-  "keywords": ["ai", "agent", "openclaw", "tauri", "desktop"],
+  "keywords": [
+    "ai",
+    "agent",
+    "openclaw",
+    "tauri",
+    "desktop"
+  ],
   "author": "ClawZ Contributors",
   "license": "MIT",
   "repository": {

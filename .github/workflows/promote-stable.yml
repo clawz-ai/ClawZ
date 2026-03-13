@@ -1,0 +1,210 @@
+name: Promote Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      rc_tag:
+        description: "Source RC tag (for example: v0.1.3-rc.1)"
+        required: true
+        type: string
+      stable_tag:
+        description: "Target stable tag (for example: v0.1.3)"
+        required: true
+        type: string
+      allow_superseded_rc:
+        description: "Allow promoting an older RC after a newer RC exists"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tags
+        run: |
+          case "${{ inputs.rc_tag }}" in
+            v*-rc.*) ;;
+            *)
+              echo "rc_tag must match vX.Y.Z-rc.N"
+              exit 1
+              ;;
+          esac
+
+          case "${{ inputs.stable_tag }}" in
+            v*-rc.*)
+              echo "stable_tag must not be an rc tag"
+              exit 1
+              ;;
+            v*)
+              ;;
+            *)
+              echo "stable_tag must match vX.Y.Z"
+              exit 1
+              ;;
+          esac
+
+          RC_TAG_INPUT="${{ inputs.rc_tag }}"
+          RC_BASE_TAG="${RC_TAG_INPUT%%-rc.*}"
+          if [ "${{ inputs.stable_tag }}" != "${RC_BASE_TAG}" ]; then
+            echo "stable_tag must match the base version of rc_tag (${RC_BASE_TAG})"
+            exit 1
+          fi
+
+      - name: Ensure stable tag version matches build manifest
+        run: |
+          EXPECTED_TAG="v$(node scripts/build-manifest.mjs get appVersion)"
+          if [ "${{ inputs.stable_tag }}" != "$EXPECTED_TAG" ]; then
+            echo "stable_tag must match build-manifest appVersion ($EXPECTED_TAG)"
+            exit 1
+          fi
+
+      - name: Reject superseded RC by default
+        env:
+          RC_TAG: ${{ inputs.rc_tag }}
+          ALLOW_SUPERSEDED_RC: ${{ inputs.allow_superseded_rc }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          rc_tag = os.environ["RC_TAG"]
+          allow_override = os.environ.get("ALLOW_SUPERSEDED_RC", "false").lower() == "true"
+
+          match = re.fullmatch(r"(v\d+\.\d+\.\d+)-rc\.(\d+)", rc_tag)
+          if not match:
+              print(f"Invalid RC tag: {rc_tag}")
+              sys.exit(1)
+
+          base_tag = match.group(1)
+          latest_tag = rc_tag
+          latest_seq = int(match.group(2))
+
+          tags = subprocess.check_output(
+              ["git", "tag", "-l", f"{base_tag}-rc.*"],
+              text=True,
+          ).splitlines()
+
+          for tag in tags:
+              other = re.fullmatch(rf"{re.escape(base_tag)}-rc\.(\d+)", tag)
+              if other and int(other.group(1)) > latest_seq:
+                  latest_seq = int(other.group(1))
+                  latest_tag = tag
+
+          if latest_tag != rc_tag and not allow_override:
+              print(f"{rc_tag} has been superseded by newer RC {latest_tag}")
+              print("Re-run with allow_superseded_rc=true only if you intentionally want to promote the older RC.")
+              sys.exit(1)
+
+          if latest_tag != rc_tag:
+              print(f"Override accepted: promoting superseded RC {rc_tag} while newer RC {latest_tag} exists.")
+          else:
+              print(f"{rc_tag} is the latest RC for {base_tag}")
+          PY
+
+      - name: Download RC notarization metadata
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p release-meta
+          gh release download "${{ inputs.rc_tag }}" \
+            --pattern "notarization-*.json" \
+            --dir release-meta
+
+      - name: Verify macOS artifacts are notarized
+        run: |
+          python3 - <<'PY'
+          import glob
+          import json
+          import sys
+
+          files = glob.glob("release-meta/notarization-*.json")
+          if not files:
+              print("No notarization metadata found")
+              sys.exit(1)
+
+          macos_files = []
+          for path in files:
+              with open(path, "r", encoding="utf-8") as handle:
+                  data = json.load(handle)
+              if data.get("platform") == "macOS":
+                  macos_files.append((path, data))
+
+          if not macos_files:
+              print("No macOS notarization metadata found")
+              sys.exit(1)
+
+          pending = [
+              f"{path}: {data.get('status')}"
+              for path, data in macos_files
+              if data.get("status") != "notarized" or data.get("signedOnly")
+          ]
+
+          if pending:
+              print("Stable promotion blocked; macOS assets are not fully notarized:")
+              for item in pending:
+                  print(item)
+              sys.exit(1)
+          PY
+
+      - name: Download RC assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p release-assets
+          gh release download "${{ inputs.rc_tag }}" --dir release-assets
+
+      - name: Create stable release notes
+        run: |
+          cat > stable-release-notes.md <<'EOF'
+          ## Stable Release
+
+          This is the notarized stable release for ClawZ.
+
+          - macOS DMGs are signed, notarized, and stapled
+          - This release is the default download target
+          - If you were using the emergency prerelease, upgrade to this version
+
+          See the CHANGELOG for release details.
+          EOF
+
+          cat > rc-superseded-notes.md <<EOF
+          ## Superseded Release Candidate
+
+          This release candidate has been superseded by stable release \`${{ inputs.stable_tag }}\`.
+
+          Use the stable release for normal installation and updates.
+          EOF
+
+      - name: Create stable tag and release from RC assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ inputs.stable_tag }}" >/dev/null 2>&1; then
+            echo "Stable release already exists for ${{ inputs.stable_tag }}"
+            exit 1
+          fi
+
+          RC_COMMIT=$(git rev-list -n 1 "${{ inputs.rc_tag }}")
+          gh release create "${{ inputs.stable_tag }}" release-assets/* \
+            --target "${RC_COMMIT}" \
+            --title "ClawZ ${{ inputs.stable_tag }}" \
+            --notes-file stable-release-notes.md
+
+      - name: Mark RC as superseded
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ inputs.rc_tag }}" \
+            --prerelease \
+            --title "ClawZ ${{ inputs.rc_tag }} (Superseded)" \
+            --notes-file rc-superseded-notes.md

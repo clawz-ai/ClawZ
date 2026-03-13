@@ -3,14 +3,31 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use super::cli::bg_std_command;
-use std::sync::mpsc;
+use std::sync::{mpsc, OnceLock};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
-/// Pinned OpenClaw version range.
-/// Uses tilde (~) to allow patch updates only within the same YYYY.M release.
-/// Bump this when ClawZ is tested against a new OpenClaw monthly release.
-const OPENCLAW_VERSION: &str = "~2026.3.0";
+const BUILD_MANIFEST_JSON: &str = include_str!("../../../build-manifest.json");
+const DEFAULT_OPENCLAW_VERSION: &str = "2026.3.8";
+
+fn pinned_openclaw_version() -> &'static str {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            serde_json::from_str::<serde_json::Value>(BUILD_MANIFEST_JSON)
+                .ok()
+                .and_then(|manifest| {
+                    manifest
+                        .get("runtime")?
+                        .get("openclaw")?
+                        .get("version")?
+                        .as_str()
+                        .map(str::to_string)
+                })
+                .unwrap_or_else(|| DEFAULT_OPENCLAW_VERSION.to_string())
+        })
+        .as_str()
+}
 
 #[derive(Clone, Serialize)]
 pub struct InstallProgress {
@@ -229,6 +246,7 @@ fn truncate(s: &str, max_len: usize) -> String {
 pub async fn install_openclaw(app: AppHandle) -> Result<String, String> {
     log::info!("starting OpenClaw installation");
     let total = 6;
+    let openclaw_version = pinned_openclaw_version();
 
     // ── Step 0: Check network connectivity ──────────────────────────────
     // Get user-configured npm registry, use curl to check reachability
@@ -284,11 +302,11 @@ pub async fn install_openclaw(app: AppHandle) -> Result<String, String> {
     // SHARP_IGNORE_GLOBAL_LIBVIPS=1 avoids sharp native build errors
     // (official recommendation: https://docs.openclaw.ai/install)
     let install_cmd = format!(
-        "SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install -g openclaw@\"{OPENCLAW_VERSION}\""
+        "SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install -g openclaw@\"{openclaw_version}\""
     );
     emit_progress(
         &app, 1, total, "Install CLI", "running", 5,
-        &format!("Installing OpenClaw ({OPENCLAW_VERSION})..."),
+        &format!("Installing OpenClaw ({openclaw_version})..."),
         &install_cmd,
     );
 
@@ -305,7 +323,7 @@ pub async fn install_openclaw(app: AppHandle) -> Result<String, String> {
             let hint = if e.contains("超时") || e.contains("timeout") {
                 "Installation unresponsive for too long, network connection may be lost.\nSuggestions:\n1. Check your network connection\n2. Try switching registry mirror: npm config set registry https://registry.npmmirror.com".to_string()
             } else if e.contains("EACCES") || e.contains("permission") {
-                format!("Insufficient permissions. Try running in terminal: sudo npm install -g openclaw@\"{OPENCLAW_VERSION}\"")
+                format!("Insufficient permissions. Try running in terminal: sudo npm install -g openclaw@\"{openclaw_version}\"")
             } else if e.contains("not found") || e.contains("command not found") {
                 "npm not found. Please install Node.js >= 22.12.0 first".to_string()
             } else if e.contains("ENETUNREACH")
