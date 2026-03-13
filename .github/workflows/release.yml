@@ -20,15 +20,23 @@ jobs:
           - platform: macos-latest
             args: --target aarch64-apple-darwin
             rust_target: aarch64-apple-darwin
+            platform_id: mac
+            arch_id: arm64
           - platform: macos-latest
             args: --target x86_64-apple-darwin
             rust_target: x86_64-apple-darwin
+            platform_id: mac
+            arch_id: x64
           - platform: ubuntu-22.04
             args: --target x86_64-unknown-linux-gnu --bundles deb,rpm
             rust_target: x86_64-unknown-linux-gnu
+            platform_id: linux
+            arch_id: x64
           - platform: ubuntu-22.04-arm
             args: --target aarch64-unknown-linux-gnu --bundles deb,rpm
             rust_target: aarch64-unknown-linux-gnu
+            platform_id: linux
+            arch_id: arm64
 
     runs-on: ${{ matrix.platform }}
 
@@ -245,6 +253,52 @@ jobs:
           fi
 
           write_notarization_file "$STATUS" "$SIGNED_ONLY" "$SUBMISSION_ID"
+
+      - name: Normalize and upload package assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APP_VERSION="$(node scripts/build-manifest.mjs get appVersion)"
+          BUNDLE_DIR="src-tauri/target/${{ matrix.rust_target }}/release/bundle"
+          NORMALIZED_DIR="$RUNNER_TEMP/normalized-assets"
+
+          mkdir -p "$NORMALIZED_DIR"
+
+          while IFS= read -r -d '' artifact; do
+            base_name="$(basename "$artifact")"
+
+            case "$base_name" in
+              *.app.tar.gz) suffix="app.tar.gz" ;;
+              *.dmg) suffix="dmg" ;;
+              *.deb) suffix="deb" ;;
+              *.rpm) suffix="rpm" ;;
+              *.msi) suffix="msi" ;;
+              *.exe) suffix="exe" ;;
+              *)
+                continue
+                ;;
+            esac
+
+            normalized_name="ClawZ-${APP_VERSION}-${{ matrix.platform_id }}-${{ matrix.arch_id }}.${suffix}"
+            cp "$artifact" "$NORMALIZED_DIR/$normalized_name"
+
+            gh release delete-asset "${RC_TAG}" "$base_name" --yes >/dev/null 2>&1 || true
+            gh release delete-asset "${RC_TAG}" "$normalized_name" --yes >/dev/null 2>&1 || true
+          done < <(find "$BUNDLE_DIR" -type f \( \
+            -name "*.app.tar.gz" -o \
+            -name "*.dmg" -o \
+            -name "*.deb" -o \
+            -name "*.rpm" -o \
+            -name "*.msi" -o \
+            -name "*.exe" \
+          \) -print0)
+
+          if ! find "$NORMALIZED_DIR" -type f -print -quit | grep -q .; then
+            echo "No package assets found in $BUNDLE_DIR"
+            exit 1
+          fi
+
+          gh release upload "${RC_TAG}" "$NORMALIZED_DIR"/* --clobber
 
       - name: Upload notarization metadata
         env:
