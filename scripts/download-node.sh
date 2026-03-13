@@ -9,14 +9,26 @@
 # Output: resources/NodeHelper.app/Contents/{Info.plist, MacOS/node}
 #
 # Usage: bash scripts/download-node.sh [NODE_VERSION] [TARGET_TRIPLE]
-# Default version: 22.22.0 (LTS)
+# Default version: the exact version pinned in build-manifest.json
 # TARGET_TRIPLE: optional Rust target triple (e.g., "aarch64-apple-darwin")
 #                to override auto-detected host architecture (useful for cross-compilation)
 set -euo pipefail
 
-NODE_VERSION="${1:-22.22.0}"
-TARGET_TRIPLE="${2:-}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+NODE_VERSION="${1:-$(node "$ROOT/scripts/build-manifest.mjs" get runtime.node.version)}"
+TARGET_TRIPLE="${2:-}"
+
+sha256_file() {
+  local file="$1"
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+  else
+    echo "No SHA-256 tool available" >&2
+    exit 1
+  fi
+}
 
 # Detect platform / architecture (with optional override)
 OS="$(uname -s)"
@@ -62,6 +74,8 @@ case "$OS" in
   *) echo "Unsupported OS: $OS"; exit 1 ;;
 esac
 
+EXPECTED_SHA256="$(node "$ROOT/scripts/build-manifest.mjs" get "runtime.node.checksums.${PLATFORM}")"
+
 # Platform-specific destination path:
 #   macOS  → NodeHelper.app/Contents/MacOS/node  (LSUIElement suppresses Dock icons)
 #   Linux  → node/bin/node                        (plain binary; no .app wrapper needed)
@@ -81,8 +95,12 @@ fi
 
 # Skip cache check when cross-compiling (existing binary may be wrong arch)
 if [ -f "$DEST" ] && [ -z "$TARGET_TRIPLE" ]; then
-  echo "✓ Node.js binary already present: $DEST"
-  exit 0
+  INSTALLED_VERSION="$("$DEST" --version 2>/dev/null || true)"
+  if [ "$INSTALLED_VERSION" = "v${NODE_VERSION}" ]; then
+    echo "✓ Node.js ${INSTALLED_VERSION} already present: $DEST"
+    exit 0
+  fi
+  echo "Node.js binary at $DEST has version ${INSTALLED_VERSION:-unknown}, expected v${NODE_VERSION}; refreshing..."
 fi
 
 DOWNLOAD_URL="https://nodejs.org/dist/v${NODE_VERSION}/${NODE_ARCHIVE}"
@@ -91,6 +109,14 @@ trap "rm -rf $TMPDIR" EXIT
 
 echo "Downloading Node.js v${NODE_VERSION} for ${PLATFORM}..."
 curl -fsSL "$DOWNLOAD_URL" -o "$TMPDIR/$NODE_ARCHIVE"
+
+ACTUAL_SHA256="$(sha256_file "$TMPDIR/$NODE_ARCHIVE")"
+if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+  echo "Checksum mismatch for $NODE_ARCHIVE" >&2
+  echo "Expected: $EXPECTED_SHA256" >&2
+  echo "Actual:   $ACTUAL_SHA256" >&2
+  exit 1
+fi
 
 echo "Extracting..."
 if [[ "$NODE_ARCHIVE" == *.zip ]]; then

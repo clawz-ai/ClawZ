@@ -148,10 +148,7 @@ Grab the latest release for your platform from the [Releases page](https://githu
 | Linux arm64 (Ubuntu/Debian) | `.deb` |
 | Linux arm64 (Fedora/RHEL) | `.rpm` |
 
-> **macOS users:** If macOS says the app is "damaged" or "cannot verify the developer", run:
-> ```bash
-> sudo xattr -rd com.apple.quarantine /Applications/ClawZ.app
-> ```
+> Stable releases are notarized. If you need a temporary emergency build before notarization completes, use the GitHub prerelease noted in the release notes.
 
 ### System Requirements
 
@@ -164,12 +161,12 @@ Grab the latest release for your platform from the [Releases page](https://githu
 
 ### Build from Source
 
-**Prerequisites:** [Node.js](https://nodejs.org/) >= 22, [pnpm](https://pnpm.io/) >= 10, [Rust](https://rustup.rs/) >= 1.77, [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
+**Prerequisites:** [Node.js](https://nodejs.org/) `22.22.0` (see [`.nvmrc`](./.nvmrc)), [pnpm](https://pnpm.io/) >= 10, [Rust](https://rustup.rs/) >= 1.77, [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ```bash
 git clone https://github.com/clawz-ai/ClawZ.git
 cd ClawZ
-pnpm install
+pnpm install --frozen-lockfile
 pnpm tauri dev
 ```
 

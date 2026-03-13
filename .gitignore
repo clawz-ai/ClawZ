@@ -16,8 +16,18 @@ Thumbs.db
 src/lib/buildInfo.ts
 
 # Bundled runtime assets (downloaded by scripts/download-node.sh + bundle-openclaw.sh)
-resources/NodeHelper.app/
-resources/openclaw/
+resources/node/*
+!resources/node/.gitkeep
+resources/openclaw/*
+!resources/openclaw/.gitkeep
+resources/NodeHelper.app/*
+!resources/NodeHelper.app/.gitkeep
+!resources/NodeHelper.app/Contents/
+resources/NodeHelper.app/Contents/*
+!resources/NodeHelper.app/Contents/.gitkeep
+!resources/NodeHelper.app/Contents/MacOS/
+resources/NodeHelper.app/Contents/MacOS/*
+!resources/NodeHelper.app/Contents/MacOS/.gitkeep
 
 # Environment
 .env

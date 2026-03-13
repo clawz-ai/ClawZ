@@ -1,0 +1,59 @@
+name: Publish Emergency RC
+
+on:
+  workflow_dispatch:
+    inputs:
+      rc_tag:
+        description: "RC tag to publish as an emergency prerelease (for example: v0.1.3-rc.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate RC tag
+        run: |
+          case "${{ inputs.rc_tag }}" in
+            v*-rc.*) ;;
+            *)
+              echo "rc_tag must match vX.Y.Z-rc.N"
+              exit 1
+              ;;
+          esac
+
+      - name: Publish emergency prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RC_TAG: ${{ inputs.rc_tag }}
+        run: |
+          cat > emergency-release-notes.md <<'EOF'
+          ## Emergency Release Candidate
+
+          This prerelease is intended for affected users who need a fix before the notarized stable release is available.
+
+          - macOS artifacts may still be signed-only
+          - Use this only if the issue fixed here is blocking you
+          - A notarized stable release will follow once the stable promotion workflow completes
+
+          ### macOS fallback
+
+          If macOS blocks opening the app, you can remove quarantine manually:
+
+          ```bash
+          sudo xattr -rd com.apple.quarantine /Applications/ClawZ.app
+          ```
+          EOF
+
+          gh release edit "${RC_TAG}" \
+            --draft=false \
+            --prerelease \
+            --title "ClawZ ${RC_TAG} Emergency Release Candidate" \
+            --notes-file emergency-release-notes.md

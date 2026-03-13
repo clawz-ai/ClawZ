@@ -3,15 +3,15 @@
 # bundled as a Tauri resource alongside the app.
 #
 # Usage: bash scripts/bundle-openclaw.sh [OPENCLAW_VERSION] [TARGET_TRIPLE]
-# Default: installs the latest published version for the host architecture.
+# Default: installs the exact version pinned in build-manifest.json.
 # TARGET_TRIPLE: optional Rust target triple (e.g., "x86_64-apple-darwin")
 #                to install native addons for the correct architecture when
 #                cross-compiling (useful for building x64 on arm64).
 set -euo pipefail
 
-OPENCLAW_VERSION="${1:-}"
-TARGET_TRIPLE="${2:-}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+OPENCLAW_VERSION="${1:-$(node "$ROOT/scripts/build-manifest.mjs" get runtime.openclaw.version)}"
+TARGET_TRIPLE="${2:-}"
 RESOURCES_DIR="$ROOT/resources/openclaw"
 mkdir -p "$RESOURCES_DIR"
 
@@ -33,20 +33,16 @@ if [ -n "$TARGET_TRIPLE" ]; then
   rm -rf "$RESOURCES_DIR/node_modules"
 fi
 
-# Check if already installed (and not forcing a refresh)
-if [ -f "$RESOURCES_DIR/node_modules/openclaw/openclaw.mjs" ] && [ -z "$OPENCLAW_VERSION" ]; then
+# Check if the pinned version is already installed.
+if [ -f "$RESOURCES_DIR/node_modules/openclaw/openclaw.mjs" ] && [ -z "$TARGET_TRIPLE" ]; then
   INSTALLED=$(node -e "try{console.log(require('$RESOURCES_DIR/node_modules/openclaw/package.json').version)}catch(e){}" 2>/dev/null || true)
-  if [ -n "$INSTALLED" ]; then
+  if [ "$INSTALLED" = "$OPENCLAW_VERSION" ]; then
     echo "✓ openclaw@${INSTALLED} already bundled at $RESOURCES_DIR"
     exit 0
   fi
 fi
 
-if [ -n "$OPENCLAW_VERSION" ]; then
-  PACKAGE="openclaw@${OPENCLAW_VERSION}"
-else
-  PACKAGE="openclaw"
-fi
+PACKAGE="openclaw@${OPENCLAW_VERSION}"
 
 echo "Installing ${PACKAGE} into $RESOURCES_DIR ..."
 
@@ -55,7 +51,11 @@ if [ ! -f "$RESOURCES_DIR/package.json" ]; then
   echo '{"name":"openclaw-bundle","private":true}' > "$RESOURCES_DIR/package.json"
 fi
 
-npm install --prefix "$RESOURCES_DIR" --save "$PACKAGE" --no-fund --no-audit --legacy-peer-deps $NPM_CROSS_FLAGS
+npm install --prefix "$RESOURCES_DIR" --save-exact --save "$PACKAGE" --no-fund --no-audit --legacy-peer-deps $NPM_CROSS_FLAGS
 
 INSTALLED=$(node -e "console.log(require('$RESOURCES_DIR/node_modules/openclaw/package.json').version)" 2>/dev/null || echo "unknown")
+if [ "$INSTALLED" != "$OPENCLAW_VERSION" ]; then
+  echo "Expected openclaw@${OPENCLAW_VERSION}, got openclaw@${INSTALLED}" >&2
+  exit 1
+fi
 echo "✓ openclaw@${INSTALLED} bundled at $RESOURCES_DIR"
