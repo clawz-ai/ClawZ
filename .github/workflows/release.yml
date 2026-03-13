@@ -258,7 +258,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          APP_VERSION="$(node scripts/build-manifest.mjs get appVersion)"
+          RC_VERSION_LABEL="${RC_TAG#v}"
           BUNDLE_DIR="src-tauri/target/${{ matrix.rust_target }}/release/bundle"
           NORMALIZED_DIR="$RUNNER_TEMP/normalized-assets"
 
@@ -279,7 +279,7 @@ jobs:
                 ;;
             esac
 
-            normalized_name="ClawZ-${APP_VERSION}-${{ matrix.platform_id }}-${{ matrix.arch_id }}.${suffix}"
+            normalized_name="ClawZ-${RC_VERSION_LABEL}-${{ matrix.platform_id }}-${{ matrix.arch_id }}.${suffix}"
             cp "$artifact" "$NORMALIZED_DIR/$normalized_name"
 
             gh release delete-asset "${RC_TAG}" "$base_name" --yes >/dev/null 2>&1 || true
