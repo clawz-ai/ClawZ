@@ -1,0 +1,50 @@
+name: Reconcile Pending Notarization
+
+on:
+  workflow_dispatch:
+    inputs:
+      rc_tag:
+        description: "RC tag to reconcile (for example: v0.1.2-rc.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate RC tag
+        run: |
+          case "${{ inputs.rc_tag }}" in
+            v*-rc.*) ;;
+            *)
+              echo "rc_tag must match vX.Y.Z-rc.N"
+              exit 1
+              ;;
+          esac
+
+      - name: Ensure Apple notarization credentials are available
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          [ -n "$APPLE_ID" ] || { echo "Missing APPLE_ID"; exit 1; }
+          [ -n "$APPLE_PASSWORD" ] || { echo "Missing APPLE_PASSWORD"; exit 1; }
+          [ -n "$APPLE_TEAM_ID" ] || { echo "Missing APPLE_TEAM_ID"; exit 1; }
+
+      - name: Reconcile macOS notarization state
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          python3 scripts/reconcile_notarization.py --rc-tag "${{ inputs.rc_tag }}"
