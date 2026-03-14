@@ -163,6 +163,26 @@ jobs:
           mkdir -p release-assets
           gh release download "${{ inputs.rc_tag }}" --dir release-assets
 
+      - name: Rename RC package assets for stable release
+        run: |
+          RC_VERSION="${{ inputs.rc_tag }}"
+          RC_VERSION="${RC_VERSION#v}"
+          STABLE_VERSION="${{ inputs.stable_tag }}"
+          STABLE_VERSION="${STABLE_VERSION#v}"
+
+          find release-assets -maxdepth 1 -type f | while read -r asset; do
+            base_name="$(basename "$asset")"
+            case "$base_name" in
+              ClawZ-"${RC_VERSION}"-*)
+                stable_name="${base_name/ClawZ-${RC_VERSION}-/ClawZ-${STABLE_VERSION}-}"
+                if [ "$stable_name" != "$base_name" ]; then
+                  mv "$asset" "release-assets/$stable_name"
+                  echo "Renamed $base_name -> $stable_name"
+                fi
+                ;;
+            esac
+          done
+
       - name: Create stable release notes
         run: |
           cat > stable-release-notes.md <<'EOF'
